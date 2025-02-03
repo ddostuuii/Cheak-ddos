@@ -19,8 +19,8 @@ db = client['rbbl']
 users_collection = db['VAMPIREXCHEATS']
 redeem_codes_collection = db['redeem_codes0']
 
-TELEGRAM_BOT_TOKEN = '7826363032:AAGMe8Th8Du4ewXciFR-uaYn1udNLPUevDM'
-ADMIN_USER_ID = 7509496491 
+TELEGRAM_BOT_TOKEN = '8085287650:AAHFa1rS5p_IEBnCVnYQHRrZxRZP_9iQMus'
+ADMIN_USER_ID =  7017469802
 
 cooldown_dict = {}
 user_attack_history = {}
